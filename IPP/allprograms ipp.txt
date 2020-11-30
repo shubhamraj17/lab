@@ -1,0 +1,1141 @@
+1
+
+#include<iostream>
+#include "omp.h"
+#include<cstdlib>
+using namespace std;
+void print(int a[], int l,int r)
+{
+	for(int i=l; i<=r; i++)
+		cout<<a[i]<<" ";
+	cout<<endl;
+}
+
+void merge(int a[], int l, int m, int r)
+{
+	
+	int L[m-l+1],R[r-m];
+	
+	#pragma omp parallel for schedule(dynamic)
+	for(int i=0; i<(m-l+1); i++)
+		L[i]=a[l+i];
+	#pragma omp parallel for schedule(dynamic)
+	for(int i=0; i<(r-m); i++)
+		R[i]=a[m+1+i];
+	int i=0, j=0, k=l;
+	
+	while(i<(m-l+1) && j<(r-m))
+	{
+		if(L[i]<R[j])
+			a[k]=L[i++];
+		else
+			a[k]=R[j++];
+		k++;
+	}
+	
+	while(i<(m-l+1))
+		a[k++]=L[i++];
+	while(j<(r-m))
+		a[k++]=R[j++];
+	//print(a,l,r);
+
+}
+/* 
+This function is the main hotspot of the algorithm which I have chosen to parallelise
+The calls labelled call 1 and call 2 are essentially independent since they are operating on distinct
+parts of the array and hence can be called in parallel.
+*/
+
+void mergeSort(int a[], int l, int r)
+{
+	if(l<r)
+	{
+		int m=(l+r)/2;
+		omp_set_nested(7);
+		
+		#pragma omp parallel sections num_threads(4)
+		{
+		cout<<omp_get_num_threads()<<endl;
+		
+			#pragma omp section
+			{
+			//cout<<"wqheqwe "<<omp_get_nested()<<"nested\n";
+				//cout<<"executed by thread= "<<omp_get_thread_num()<<endl;
+				mergeSort(a,l,m);
+			}
+			#pragma omp section
+			{
+	
+				//cout<<"executed by thread= "<<omp_get_thread_num()<<endl;
+				mergeSort(a,m+1,r);
+			}
+		
+		}
+		merge(a,l,m,r); 
+	}
+}
+
+int main()
+{
+	int n;
+	cout<<"enter the number of elements\n";
+	cin>>n;
+	int a[n];
+	cout<<"enter the array elements\n";
+	for(int i=0; i<n; i++)
+		a[i]=(int)random()%1000;
+	cout<<"\nUnsorted array; ";
+	print(a,0,n-1);
+
+	double t1=omp_get_wtime();
+	mergeSort(a,0,n-1);
+	double t2=(omp_get_wtime()-t1);
+
+	cout<<"\nSorted array: ";
+	print(a,0,n-1);
+	cout<<"time: "<<t2;
+	return 0;
+	}
+
+2
+
+#include<omp.h>
+#include<iostream>
+#include<iomanip>
+#include<cstdio>
+using namespace std;
+
+int main()
+{
+int nthread,tid;
+int m,n,p,q;
+cout<<"enter the matrix size of matrix A\n";
+cin>>m>>n;
+cout<<"enter the matrix size of matrix B\n";
+cin>>p>>q;
+if(n!=p)
+{
+	cout<<"wrong size\n";
+	return 0;
+}
+
+int a[m][n],b[p][q],c[m][q];
+double t1=omp_get_wtime();
+#pragma omp parallel for schedule(dynamic,4)//matrix A
+for(int i=0;i<m;i++)
+{
+	//printf("Row %d by %d\n",i,omp_get_thread_num());
+	for(int j=0;j<n;j++)
+	{
+		a[i][j]=i+j;
+	}
+}
+
+
+
+#pragma omp parallel for schedule(dynamic,4)//matrix B
+
+
+for(int i=0;i<p;i++)
+{
+	//printf("Row %d by %d\n",i,omp_get_thread_num());
+	for(int j=0;j<q;j++)
+	{
+		b[i][j]=i+j;
+	}
+}
+#pragma omp parallel for schedule(dynamic,4)
+for(int i=0;i<m;i++)
+	for(int j=0;j<q;j++)
+		c[i][j]=0;
+
+
+
+#pragma omp parallel for schedule(dynamic,4)//computing C
+for(int i=0;i<m;i++)
+{
+	//printf("%d executes row %d\n",i,omp_get_thread_num());
+	for(int j=0;j<q;j++)
+	{
+		for(int k=0;k<n;k++)
+		{
+			c[i][j]+=(a[i][k]*b[k][j]);
+		}
+	}
+}
+
+double t2=omp_get_wtime();
+cout<<"matrix reults\n";
+for(int i=0;i<m;i++)
+{
+
+	for(int j=0;j<q;j++)
+	{
+		cout<<c[i][j]<<" ";
+	}
+	cout<<"\n";
+}
+cout<<"clock time "<<t2-t1;
+return 0;
+}
+
+3
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<math.h>
+#include<omp.h>
+#include<string.h>
+
+void primetable(int primenum)
+{
+	int i,j,p;
+	int prime;
+	int* primes;
+	primes=(int*)malloc(sizeof(int)*primenum);
+	i=2;
+	p=0;
+	while(p<primenum)
+	{
+		prime=1;
+		for(j=2;j<i;j++)
+		{
+			if(i%j==0)
+			{
+				prime=0;
+				break;
+			}
+		}
+		if(prime)
+		{
+			primes[p]=i;
+			p++;
+		}
+		i=i+1;
+	}
+	for(int i=0;i<primenum;i++)
+	{
+		printf("%d ",primes[i]);
+	}
+	
+}
+
+void sinetable(int sinenum)
+{
+	int i;
+	double s;
+	double* sines;
+	sines=(double*)malloc(sizeof(double)*sinenum);
+	double pi=3.1415926;
+	int j;
+	for(i=0;i<sinenum;i++)
+	{
+		sines[i]=sin(i);
+		
+	}
+	printf("\n");
+	for(int i=0;i<sinenum;i++)
+	{
+		printf("%lf ",sines[i]);
+	}
+}
+
+int main()
+{
+	int i,j;
+	//double* b;
+	//int* a;
+	int n;
+	printf("enter the value of n\n");
+	scanf("%d",&n);
+	//b=(double*)malloc(sizeof(double)*n);
+	//a=(int*)malloc(sizeof(int)*n);
+	double t,s;
+	int k,z;
+	z=0;
+	for(k=1;k<=8;k=pow(2,z))
+	{
+		t=omp_get_wtime();
+		#pragma omp parallel sections num_threads(k)
+		{
+			#pragma omp section
+				primetable(n);
+			#pragma omp section
+				sinetable(n);
+		}
+		s=omp_get_wtime()-t;
+		z++;
+		printf("\n");
+		printf("numthreads:%d -------->time:%lf\n",k,s);
+	}
+return 0;
+}
+
+4
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<math.h>
+#include<omp.h>
+#include<string.h>
+#define NAME "word.txt"
+#define count 4
+char search[count][20]={"hi","naga","helo","bye"};
+
+int d[count];
+
+int isalphaa(char c)
+{
+	return(((c>=65)&&(c<=90)) ||((c>=97)&&(c<=122)));
+}
+
+int isequal(char *a, char const *key)
+{
+	/*char b[20];
+	strcpy(b,key);
+	int i;
+	int lena=strlen(a);
+	int lenb=strlen(b);
+	if(lena!=lenb)
+		return 0;
+	for(i=0;i<lena;i++)
+	{
+		if(a[i]>90)
+			a[i]-=32;
+		if(b[i]>90)
+			b[i]-=32;
+	}*/
+	return(strcmp(a,key)==0);
+}
+
+void readword(FILE *fp,char *temp)
+{
+	char c=fgetc(fp);
+	int i=0;
+	while(c!=EOF && isalphaa(c)!=0)
+	{
+		temp[i++]=c;
+		c=fgetc(fp);
+	}
+	temp[i]='\0';
+}
+
+int determine(char const *file,char const *key)
+{
+	int wcount=0;
+	FILE *fp=fopen(file,"r");
+	char temp[40];
+	while(feof(fp)==0)
+	{
+		readword(fp,temp);
+		if(isequal(temp,key)!=0)
+			wcount++;
+	}
+	return wcount;
+}
+
+
+int main()
+{
+	int nt,i;
+	for(i=0;i<count;i++)
+	{
+		d[i]=0;
+	}
+	
+	double t,s;
+	int z=0;
+	for(nt=1;nt<=8;nt=pow(2,z))
+	{
+		t=omp_get_wtime();
+		#pragma omp parallel for num_threads(nt)
+			for(i=0;i<count;i++)
+				d[i]=determine(NAME,search[i]);
+		s=omp_get_wtime()-t;
+		z++;
+		printf("time taken:%lf----->numthreads:%d\n",s,nt);
+		for(i=0;i<count;i++)
+		{
+		printf("%s------%d\n",search[i],d[i]);
+		}
+	}
+	
+	return 0;
+}
+
+5
+
+#include <iostream>
+#include <cstdlib> // or <stdlib.h> rand, srand
+#include <ctime> // or <time.h> time
+#include <omp.h>
+#include <math.h>
+#define K 4
+using namespace std;
+int num_threads;
+long num_points;
+long** points; // 2D array points[x][0] -> point location, points[x][1] -> distance from clustermean
+int cluster[K][2] = {
+	{75, 25}, {25, 25}, {25, 75}, {75, 75}
+	};
+long cluster_count[K];
+
+void populate_points() 
+{
+	// Dynamically allocate points[num_points][2] 2D array
+	points = new long*[num_points];
+	for (long i=0; i<num_points; i++)
+	points[i] = new long[2];
+	// Fill random points (0 to 100)
+	srand(time(NULL));
+	for (long i=0; i<num_points; i++) 
+	{
+		points[i][0] = rand() % 100;
+		points[i][1] = rand() % 100;
+		cout<<points[i][0]<<" "<<points[i][1]<<"\n";
+	}
+	// Initialize cluster_count
+	for (int i=0; i<K; i++) 
+	{
+		cluster_count[i] = 0;
+	}
+}
+
+double get_distance(int x1, int y1, int x2, int y2) 
+{
+	int dx = x2-x1, dy = y2-y1;
+	return (double)sqrt(dx*dx + dy*dy);
+}
+
+void classify_points() 
+{
+	#pragma omp parallel for num_threads(num_threads)
+	for (long i=0; i<num_points; i++) 
+	{
+	double min_dist = 1000, cur_dist = 1;
+	int cluster_index = -1;
+	for (int j=0; j<K; j++) 
+	  {
+		cur_dist = get_distance(points[i][0], points[i][1],cluster[j][0], cluster[j][1]);
+		if (cur_dist<min_dist) 
+		{
+			min_dist = cur_dist;
+			cluster_index = j;
+		}
+	  }
+	cluster_count[cluster_index]++;
+	cout<<"point 1 belongs to cluster"<<cluster_index+1<<"\n";
+	}
+	
+}
+
+int main(int argc, char* argv[]) 
+{
+	num_points = atol(argv[1]);
+	num_threads = atoi(argv[2]);
+	populate_points();
+	double t1 = omp_get_wtime();
+	classify_points();
+	double t2 = omp_get_wtime();
+	double t = (t2 - t1) * 1000;
+	cout<< "Time Taken: " << t << "ms"<<endl;
+}
+
+
+6
+
+//Using Critical Section
+#include <stdio.h>
+#include <gd.h>
+#include <string.h>
+#include <omp.h>
+
+int main(int argc, char *argv[]) {
+
+if (argc < 4) {
+printf("Usage: ./negative input.png output.png num_threads\n");
+return 1;
+}
+
+char *input_file = argv[1];
+char *output_file = argv[2];
+int num_threads = atoi(argv[3]);
+
+int color, x, y, i;
+int red, green, blue;
+
+FILE *fp;
+
+if((fp = fopen(input_file, "r")) == NULL) {
+printf("Error opening file %s\n", input_file);
+return 1;
+}
+
+gdImagePtr img = gdImageCreateFromPng(fp);
+int width = gdImageSX(img);
+int height = gdImageSY(img);
+
+double t1 = omp_get_wtime();
+
+#pragma omp parallel for private(y, color, red, green, blue) num_threads(num_threads)
+for(x=0; x<width; x++) {
+#pragma omp critical
+{
+for(y=0; y<height; y++) {
+color = x + 0;
+color = gdImageGetPixel(img, x, y);
+red = gdImageRed(img, color);
+green = gdImageGreen(img, color);
+blue = gdImageBlue(img, color);
+int avg=(red+green+blue)/3;
+color = gdImageColorAllocate(img, avg, avg, avg);
+gdImageSetPixel(img, x, y, color);
+}
+}
+}
+
+double t2 = omp_get_wtime();
+
+if((fp=fopen(output_file, "w")) == NULL) {
+printf("Error opening output file %s\n", output_file);
+
+return 1;
+}
+
+gdImagePng(img, fp);
+gdImageDestroy(img);
+fclose(fp);
+
+printf("File Size: %dx%d\n", width, height);
+printf("Time Taken: %.3lfms\n",(t2 - t1) * 1000);
+return 0;
+}
+
+7
+
+//Using Critical Section
+#include <stdio.h>
+#include <gd.h>
+#include <string.h>
+#include <omp.h>
+
+int main(int argc, char *argv[]) {
+
+if (argc < 4) {
+printf("Usage: ./negative input.png output.png num_threads\n");
+return 1;
+}
+
+char *input_file = argv[1];
+char *output_file = argv[2];
+int num_threads = atoi(argv[3]);
+
+int color, x, y, i;
+int red, green, blue;
+
+FILE *fp;
+
+if((fp = fopen(input_file, "r")) == NULL) {
+printf("Error opening file %s\n", input_file);
+return 1;
+}
+
+gdImagePtr img = gdImageCreateFromPng(fp);
+int width = gdImageSX(img);
+int height = gdImageSY(img);
+
+double t1 = omp_get_wtime();
+
+#pragma omp parallel for private(y, color, red, green, blue) num_threads(num_threads)
+for(x=0; x<width; x++) {
+#pragma omp critical
+{
+for(y=0; y<height; y++) {
+color = x + 0;
+color = gdImageGetPixel(img, x, y);
+red = 255 - gdImageRed(img, color);
+green = 255 - gdImageGreen(img, color);
+blue = 255 - gdImageBlue(img, color);
+color = gdImageColorAllocate(img, red, green, blue);
+gdImageSetPixel(img, x, y, color);
+}
+}
+}
+
+double t2 = omp_get_wtime();
+
+if((fp=fopen(output_file, "w")) == NULL) {
+printf("Error opening output file %s\n", output_file);
+
+return 1;
+}
+
+gdImagePng(img, fp);
+gdImageDestroy(img);
+fclose(fp);
+
+printf("File Size: %dx%d\n", width, height);
+printf("Time Taken: %.3lfms\n",(t2 - t1) * 1000);
+return 0;
+}
+
+
+8
+
+
+# include <mpi.h>
+# include <stdlib.h>
+# include <stdio.h>
+void ring_io ( int p, int id );
+
+int main ( int argc, char *argv[] )
+{	
+	int error;
+	int id;
+	int p;
+/*
+Initialize MPI.
+*/
+	MPI_Init ( &argc, &argv );
+/*
+Get the number of processes.
+*/
+	MPI_Comm_size ( MPI_COMM_WORLD, &p );
+/*
+*/
+	MPI_Comm_rank ( MPI_COMM_WORLD, &id );
+/*
+Print a message.
+*/
+	if ( id == 0 )
+	{
+		printf ( "\n" );
+		printf ( "RING_MPI:\n" );
+		printf ( " C/MPI version\n" );
+		printf ( " Measure time required to transmit data around\n" );
+		printf ( " a ring of processes\n" );
+		printf ( "\n" );
+		printf ( " The number of processes is %d\n", p );
+	}
+	ring_io ( p, id );
+/*
+Shut down MPI.
+*/
+	MPI_Finalize ( );
+/*
+Terminate.
+*/
+	if ( id == 0 )
+	{
+		printf ( "\n" );
+		printf ( "RING_MPI:\n" );
+		printf ( " Normal end of execution.\n" );
+	}
+return 0;
+}
+
+void ring_io ( int p, int id )
+{
+	int dest;
+	int i;
+	int j;
+	int n;
+
+	int n_test[5] = { 100, 1000, 10000, 100000, 1000000 };
+	int n_test_num = 5;
+	int source;
+	MPI_Status status;
+	double tave;
+	int test;
+	int test_num = 10;
+	double tmax;
+	double tmin;
+	double wtime;
+	double *x;
+	if ( id == 0 )
+	{
+		printf ( "\n" );
+		printf ( " Timings based on %d experiments\n", test_num );
+		printf ( " N double precision values were sent\n" );
+		printf ( " in a ring transmission starting and ending at process 0\n");
+		printf ( " and using a total of %d processes.\n", p );
+		printf ( "\n" );
+		printf ( " N T min T ave T max\n");
+		printf ( "\n" );
+	}
+/*
+Choose message size.
+*/
+	for ( i = 0; i < n_test_num; i++ )
+	{
+		n = n_test[i];
+		x = ( double * ) malloc ( n * sizeof ( double ) );
+/*
+Process 0 sends very first message,
+then waits to receive the "echo" that has gone around the world.
+*/
+		if ( id == 0 )
+		{
+			dest = 1;
+			source = p - 1;
+			tave = 0.0;
+			tmin = 1.0E+30;
+			tmax = 0.0;
+		   for ( test = 1; test <= test_num; test++ )
+		   {
+/*
+Just in case, set the entries of X in a way that identifies
+which iteration of the test is being carried out.
+*/
+			for ( j = 0; j < n; j++ )
+			{
+				x[j] = ( double ) ( test + j );
+			}
+			wtime = MPI_Wtime ( );
+			MPI_Send ( x, n, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD );
+			MPI_Recv ( x, n, MPI_DOUBLE, source, 0, MPI_COMM_WORLD, &status );
+			wtime = MPI_Wtime ( ) - wtime;
+
+/*
+Record the time it took.
+*/
+			tave = tave + wtime;
+			if ( wtime < tmin )
+			{
+				tmin = wtime;
+			}
+			if ( tmax < wtime )
+			{
+				tmax = wtime;
+			}
+		   }
+		tave = tave / ( double ) ( test_num );
+		printf ( " %8d %14.6g %14.6g %14.6g\n", n, tmin, tave, tmax );
+	    }
+/*
+Worker ID must receive first from ID-1, then send to ID+1.
+*/
+		else
+		{
+			source = id - 1;
+			dest = ( ( id + 1 ) % p );
+			for ( test = 1; test <= test_num; test++ )
+			{
+				MPI_Recv ( x, n, MPI_DOUBLE, source, 0, MPI_COMM_WORLD, &status );
+				MPI_Send ( x, n, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD );
+			}
+		}
+	free ( x );
+	}
+
+return;
+}
+
+
+9
+
+
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+/* Define length of dot product vectors */
+#define VECLEN 100
+int min(int a, int b)
+{
+	return(a<b?a:b);
+}
+
+int main (int argc, char* argv[])
+{
+	int i,myid, numprocs, len=VECLEN;
+	double *a, *b;
+	double mysum, allsum=0.0;
+	int nbar,extra,index,offset=0;
+/* MPI Initialization */
+
+	MPI_Init (&argc, &argv);
+	MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
+	MPI_Comm_rank (MPI_COMM_WORLD, &myid);
+	
+
+
+	if (myid == 0)
+		printf("Starting omp_dotprod_mpi. Using %d tasks...\n",numprocs);
+/* Assign storage for dot product vectors */
+	a = (double*) malloc (len*sizeof(double));
+	b = (double*) malloc (len*sizeof(double));
+	
+/* Initialize dot product vectors */
+	for (i=0; i<len; i++) 
+	{
+		a[i]=2.0;
+		b[i]=a[i];
+	}
+	
+/* Perform the dot product */
+
+	mysum = 0.0;
+	nbar=len/numprocs;
+	extra=len%numprocs;
+	if(myid<extra)
+		offset=1;
+	
+	double t1=MPI_Wtime();	
+	for (i=0; i<(nbar+offset); i++)
+	{
+		index=myid*nbar+i+min(extra,myid);
+		mysum += a[index] * b[index];
+	}
+	printf("Task %d partial sum = %f\n",myid, mysum);
+
+/* After the dot product, perform a summation of results on each node */
+	MPI_Reduce (&mysum, &allsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	double t2=MPI_Wtime()-t1;
+	if (myid == 0)
+	{
+		printf ("Done. MPI version: global sum = %f \n", allsum);
+		printf("time of execution for %d procs= %lf\n",numprocs,t2);
+	}
+	free (a);
+	free (b);
+	MPI_Finalize();
+}
+
+
+10
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "mpi.h"
+#include <math.h>
+#include<time.h>
+int main(int argc, char * argv[]) {
+  int niter = 1000000;
+  int myid; //holds process's rank id
+  double x, y; //x,y value for the random coordinate
+  int i,size;
+  int count = 0; //Count holds all the number of how many good coordinates
+  double z; //Used to check if x^2+y^2<=1
+  double pi,wtime; //holds approx value of pi
+  int reducedcount; //total number of "good" points from all nodes
+  MPI_Init( &argc, &argv); //Start MPI
+  MPI_Comm_rank(MPI_COMM_WORLD, & myid); //get rank of node's process
+	MPI_Comm_size(MPI_COMM_WORLD, & size);
+  /* Everyone can do the work */
+
+	
+	wtime = MPI_Wtime ( );
+  for (i = 0; i < niter; ++i) //main loop
+  {
+    srand48(time(NULL) + myid); //Give rand() a seed value unique on each node (times are synced)
+    x = (double) random() / RAND_MAX; //gets a random x coordinate
+    y = (double) random() / RAND_MAX; //gets a random y coordinate
+    z = sqrt((x * x) + (y * y)); //Checks to see if number in inside unit circle
+    if (z <= 1) {
+      ++count; //if it is, consider it a valid random point
+    }
+  }
+
+  MPI_Reduce( & count, &reducedcount,1,MPI_INT,
+    MPI_SUM,
+    0,
+    MPI_COMM_WORLD);
+
+  wtime = MPI_Wtime( ) - wtime;
+  if (myid == 0) //if root process
+  {
+    pi = ((double) reducedcount / (double) (niter*size)) * 4.0; //p = 4(m/n)
+    printf("Pi: %f\n%i\n", pi, reducedcount);
+    //Print the calculated value of pi
+  	printf("time: %lf\n",wtime);
+
+  }
+
+  MPI_Finalize(); //Close the MPI instance
+  return 0;
+}
+
+
+
+11
+
+
+
+#include "mpi.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include<math.h>
+//#include<algorithm.h>
+#define NRA 1000               /* number of rows in matrix A */
+#define NCA  1000               /* number of columns in matrix A */
+//#define NCB 5                  /* number of columns in matrix B */
+#define MASTER 0               /* taskid of first task */
+#define FROM_MASTER 1          /* setting a message type */
+#define FROM_WORKER 2          /* setting a message type */
+
+int main (int argc, char *argv[])
+{
+int	numtasks,              /* number of tasks in partition */
+	taskid,                /* a task identifier */
+	numworkers,            /* number of worker tasks */
+	source,                /* task id of message source */
+	dest,                  /* task id of message destination */
+	mtype,                 /* message type */
+	rows,                  /* rows of matrix A sent to each worker */
+	averow, extra, offset, /* used to determine rows sent to each worker */
+	i, j, k, rc;           /* misc */
+int	a[NRA][NCA],           
+	c[NRA]={0};           /* result matrix C */
+MPI_Status status;
+
+MPI_Init(&argc,&argv);
+double start = MPI_Wtime();
+MPI_Comm_rank(MPI_COMM_WORLD,&taskid);
+MPI_Comm_size(MPI_COMM_WORLD,&numtasks);
+if (numtasks < 2 ) {
+  printf("Need at least two MPI tasks. Quitting...\n");
+  MPI_Abort(MPI_COMM_WORLD, rc);
+  exit(1);
+  }
+numworkers = numtasks-1;
+
+
+
+
+/**************************** worker task ************************************/
+   if (taskid > MASTER)
+   {
+      mtype = FROM_MASTER;
+      MPI_Recv(&offset, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD, &status);
+      MPI_Recv(&rows, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD, &status);
+      MPI_Recv(&a[offset][0], rows*NCA, MPI_INT, MASTER, mtype, MPI_COMM_WORLD, &status);
+      //MPI_Recv(&b, NCA*NCB, MPI_INT, MASTER, mtype, MPI_COMM_WORLD, &status);
+	//printf("recieved from %d \n",offset);
+	int ss=0;
+      for(int i=offset;i<(offset+rows);i++)
+	{
+	//printf("\n%d offset\n",offset);
+	for(int j=0;j<NCA;j++)
+	{
+		//printf("%d ",a[i][j]);
+		ss+=abs(a[i][j]);
+	}
+	printf("\n");
+	}
+	
+      mtype = FROM_WORKER;
+      MPI_Send(&offset, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD);
+      MPI_Send(&rows, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD);
+      MPI_Send(&ss, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD);
+	//printf("sent from %d",offset);
+	//printf(" %d \n",ss);
+   }
+/**************************** master task ************************************/
+   if (taskid == MASTER)
+   {
+      printf("mpi_mm has started with %d tasks.\n",numtasks);
+      printf("Initializing arrays...");
+      for (i=0; i<NRA; i++)
+	{
+         for (j=0; j<NCA; j++)
+		{
+            	a[i][j]= i+j;
+		//printf("%d  ",a[i][j]);
+		}
+	   printf("\n");
+  	}
+	
+      
+
+      /* Send matrix data to the worker tasks */
+      averow = NRA/numworkers;
+      extra = NRA%numworkers;
+      offset = 0;
+      mtype = FROM_MASTER;
+      for (dest=1; dest<=numworkers; dest++)
+      {
+         rows = (dest <= extra) ? averow+1 : averow;   	
+         //printf("Sending %d rows to task %d offset=%d\n",rows,dest,offset);
+         MPI_Send(&offset, 1, MPI_INT, dest, mtype, MPI_COMM_WORLD);
+         MPI_Send(&rows, 1, MPI_INT, dest, mtype, MPI_COMM_WORLD);
+         MPI_Send(&a[offset][0], rows*NCA, MPI_INT, dest, mtype,
+                   MPI_COMM_WORLD);
+         //MPI_Send(&b, NCA*NCB, MPI_DOUBLE, dest, mtype, MPI_COMM_WORLD);
+         offset = offset + rows;
+      }
+
+      /* Receive results from worker tasks */
+      mtype = FROM_WORKER;
+	//printf("here\n");
+      for (i=1; i<=numworkers; i++)
+      {
+         source = i;
+         MPI_Recv(&offset, 1, MPI_INT, source, mtype, MPI_COMM_WORLD, &status);
+         MPI_Recv(&rows, 1, MPI_INT, source, mtype, MPI_COMM_WORLD, &status);
+         MPI_Recv(&c[offset], 1, MPI_INT, source, mtype, 
+                  MPI_COMM_WORLD, &status);
+	
+         //printf("Received results from task %d\n",source);
+      }
+
+      /* Print results */
+      printf("******************************************************\n");
+      //printf("Result Matrix:\n");
+	int m=c[0];
+      for (i=1; i<NRA; i++)
+      {
+         if(m<c[i])
+	   m=c[i];
+         
+      }
+	
+	
+	printf(" norm of matrix= %d\n",m);
+	
+      printf("\n******************************************************\n");
+      printf ("Done.\n");
+   
+
+	double final = MPI_Wtime();
+	printf("time execution= %lf",final-start);
+}
+   MPI_Finalize();
+}
+
+
+
+12
+
+
+
+#include "mpi.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+#define NRA 550                /* number of rows in matrix A */
+#define NCA 550                /* number of columns in matrix A */
+#define NCB 550                 /* number of columns in matrix B */
+#define MASTER 0               /* taskid of first task */
+#define FROM_MASTER 1          /* setting a message type */
+#define FROM_WORKER 2          /* setting a message type */
+
+int main (int argc, char *argv[])
+{
+int	numtasks,              /* number of tasks in partition */
+	taskid,                /* a task identifier */
+	numworkers,            /* number of worker tasks */
+	source,                /* task id of message source */
+	dest,                  /* task id of message destination */
+	mtype,                 /* message type */
+	rows,                  /* rows of matrix A sent to each worker */
+	averow, extra, offset, /* used to determine rows sent to each worker */
+	i, j, k, rc;           /* misc */
+double	a[NRA][NCA],           /* matrix A to be multiplied */
+	b[NCA][NCB],           /* matrix B to be multiplied */
+	c[NRA][NCB];           /* result matrix C */
+MPI_Status status;
+
+MPI_Init(&argc,&argv);
+double start = MPI_Wtime();
+MPI_Comm_rank(MPI_COMM_WORLD,&taskid);
+MPI_Comm_size(MPI_COMM_WORLD,&numtasks);
+if (numtasks < 2 ) {
+  printf("Need at least two MPI tasks. Quitting...\n");
+  MPI_Abort(MPI_COMM_WORLD, rc);
+  exit(1);
+  }
+numworkers = numtasks-1;
+
+
+
+
+/**************************** worker task ************************************/
+   if (taskid > MASTER)
+   {
+      mtype = FROM_MASTER;
+      MPI_Recv(&offset, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD, &status);
+      MPI_Recv(&rows, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD, &status);
+      MPI_Recv(&a, rows*NCA, MPI_DOUBLE, MASTER, mtype, MPI_COMM_WORLD, &status);
+      MPI_Recv(&b, NCA*NCB, MPI_DOUBLE, MASTER, mtype, MPI_COMM_WORLD, &status);
+
+      for (k=0; k<NCB; k++)
+         for (i=0; i<rows; i++)
+         {
+            c[i][k] = 0.0;
+            for (j=0; j<NCA; j++)
+               c[i][k] = c[i][k] + a[i][j] * b[j][k];
+         }
+      mtype = FROM_WORKER;
+      MPI_Send(&offset, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD);
+      MPI_Send(&rows, 1, MPI_INT, MASTER, mtype, MPI_COMM_WORLD);
+      MPI_Send(&c, rows*NCB, MPI_DOUBLE, MASTER, mtype, MPI_COMM_WORLD);
+   }
+/**************************** master task ************************************/
+   if (taskid == MASTER)
+   {
+      printf("mpi_mm has started with %d tasks.\n",numtasks);
+      printf("Initializing arrays...\n");
+      for (i=0; i<NRA; i++)
+         for (j=0; j<NCA; j++)
+            a[i][j]= i+j;
+      for (i=0; i<NCA; i++)
+         for (j=0; j<NCB; j++)
+            b[i][j]= i*j;
+
+      /* Send matrix data to the worker tasks */
+      averow = NRA/numworkers;
+      extra = NRA%numworkers;
+      offset = 0;
+      mtype = FROM_MASTER;
+      for (dest=1; dest<=numworkers; dest++)
+      {
+         rows = (dest <= extra) ? averow+1 : averow;   	
+         printf("Sending %d rows to task %d offset=%d\n",rows,dest,offset);
+         MPI_Send(&offset, 1, MPI_INT, dest, mtype, MPI_COMM_WORLD);
+         MPI_Send(&rows, 1, MPI_INT, dest, mtype, MPI_COMM_WORLD);
+         MPI_Send(&a[offset][0], rows*NCA, MPI_DOUBLE, dest, mtype,
+                   MPI_COMM_WORLD);
+         MPI_Send(&b, NCA*NCB, MPI_DOUBLE, dest, mtype, MPI_COMM_WORLD);
+         offset = offset + rows;
+      }
+
+      /* Receive results from worker tasks */
+      mtype = FROM_WORKER;
+      for (i=1; i<=numworkers; i++)
+      {
+         source = i;
+         MPI_Recv(&offset, 1, MPI_INT, source, mtype, MPI_COMM_WORLD, &status);
+         MPI_Recv(&rows, 1, MPI_INT, source, mtype, MPI_COMM_WORLD, &status);
+         MPI_Recv(&c[offset][0], rows*NCB, MPI_DOUBLE, source, mtype, 
+                  MPI_COMM_WORLD, &status);
+         printf("Received results from task %d\n",source);
+      }
+	double final = MPI_Wtime();
+	printf("time execution= %lf",final-start);
+      /* Print results 
+      printf("******************************************************\n");
+      printf("Result Matrix:\n");
+      for (i=0; i<NRA; i++)
+      {
+         printf("\n"); 
+         for (j=0; j<NCB; j++) 
+            printf("%6.2f   ", c[i][j]);
+      }
+      printf("\n******************************************************\n");
+      printf ("Done.\n");*/
+   
+
+	
+}
+   MPI_Finalize();
+}
+
+
+	
+
+
+
+
+
+
